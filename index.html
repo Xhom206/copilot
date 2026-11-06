@@ -1,0 +1,500 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#17191f">
+  <title>Forma 3D Studio</title>
+
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      height: 100vh;
+      height: 100dvh;
+      overflow: hidden;
+      color: #eef0f7;
+      background: #17191f;
+      font: 14px system-ui, sans-serif;
+    }
+    button, input { font: inherit; }
+    button {
+      color: inherit;
+      background: #292c35;
+      border: 1px solid #414451;
+      border-radius: 8px;
+      padding: 9px 12px;
+      cursor: pointer;
+      touch-action: manipulation;
+    }
+    button:hover, button.active { background: #7058e8; border-color: #9c88ff; }
+
+    .app { display: grid; grid-template-rows: 54px 1fr; height: 100%; }
+    header {
+      z-index: 3;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 0 12px;
+      background: #202229;
+      border-bottom: 1px solid #383a44;
+    }
+    .brand { font-weight: 800; white-space: nowrap; }
+    .brand span { color: #a997ff; }
+    .header-actions { display: flex; gap: 7px; margin-left: auto; }
+    .status { margin-left: 8px; color: #a5a9b6; font-size: 12px; }
+
+    main { position: relative; display: grid; grid-template-columns: 56px 1fr 270px; min-height: 0; }
+    .tools {
+      z-index: 2;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      padding: 9px 7px;
+      background: #202229;
+      border-right: 1px solid #383a44;
+    }
+    .tool { width: 40px; height: 40px; padding: 0; font-size: 18px; }
+    .workspace { position: relative; min-width: 0; min-height: 0; }
+    #viewport { position: absolute; inset: 0; touch-action: none; }
+    #viewport canvas { display: block; width: 100%; height: 100%; touch-action: none; }
+
+    .label, .hint {
+      position: absolute;
+      left: 10px;
+      z-index: 1;
+      padding: 7px 10px;
+      color: #d3d5df;
+      background: #202229dd;
+      border: 1px solid #ffffff20;
+      border-radius: 7px;
+      font-size: 11px;
+      pointer-events: none;
+    }
+    .label { top: 10px; }
+    .hint { bottom: 10px; }
+
+    aside {
+      z-index: 2;
+      overflow: auto;
+      background: #202229;
+      border-left: 1px solid #383a44;
+    }
+    .panel { padding: 14px; border-bottom: 1px solid #383a44; }
+    h2 {
+      margin: 0 0 12px;
+      color: #b7bac6;
+      font-size: 11px;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+    }
+    .add-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; }
+    .add-grid button { padding: 9px 5px; font-size: 12px; }
+    #object-list { display: grid; gap: 4px; }
+    .object-item {
+      width: 100%;
+      padding: 8px;
+      text-align: left;
+      background: transparent;
+      border-color: transparent;
+    }
+    .object-item.selected { background: #3a3459; }
+    .object-item span { margin-right: 8px; color: #a997ff; }
+    .field {
+      display: grid;
+      grid-template-columns: 90px 1fr;
+      align-items: center;
+      gap: 8px;
+      margin: 10px 0;
+      color: #aeb2c0;
+      font-size: 12px;
+    }
+    .field input[type="number"] {
+      width: 100%;
+      min-width: 0;
+      padding: 8px;
+      color: white;
+      background: #17191f;
+      border: 1px solid #414451;
+      border-radius: 6px;
+    }
+    .field input[type="color"] { width: 100%; height: 36px; }
+    .empty { color: #969baa; line-height: 1.5; }
+    #error {
+      display: none;
+      position: fixed;
+      z-index: 10;
+      inset: 12px 12px auto;
+      padding: 14px;
+      color: #fff;
+      background: #7a2935;
+      border: 1px solid #ff7b89;
+      border-radius: 10px;
+      white-space: pre-wrap;
+    }
+    #panel-toggle { display: none; }
+
+    @media (max-width: 760px) {
+      main { display: block; }
+      .workspace { position: absolute; inset: 0; }
+      .tools {
+        position: absolute;
+        left: 50%;
+        bottom: max(12px, env(safe-area-inset-bottom));
+        flex-direction: row;
+        padding: 6px;
+        border: 1px solid #ffffff30;
+        border-radius: 12px;
+        transform: translateX(-50%);
+        box-shadow: 0 8px 25px #0008;
+      }
+      aside {
+        position: absolute;
+        right: 8px;
+        bottom: calc(70px + env(safe-area-inset-bottom));
+        left: 8px;
+        max-height: 60dvh;
+        border: 1px solid #ffffff30;
+        border-radius: 12px;
+        visibility: hidden;
+        transform: translateY(20px);
+        opacity: 0;
+        transition: .18s ease;
+      }
+      aside.open { visibility: visible; transform: translateY(0); opacity: 1; }
+      #panel-toggle { display: inline-block; }
+      .status { display: none; }
+      .hint { bottom: 70px; max-width: calc(100% - 20px); }
+    }
+
+    @media (max-width: 390px) {
+      header { padding: 0 7px; gap: 5px; }
+      .brand { font-size: 13px; }
+      .header-actions { gap: 5px; }
+      .header-actions button { padding: 8px; font-size: 12px; }
+      #save { display: none; }
+    }
+  </style>
+
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "https://unpkg.com/three@0.169.0/build/three.module.js",
+        "three/addons/": "https://unpkg.com/three@0.169.0/examples/jsm/"
+      }
+    }
+  </script>
+</head>
+<body>
+  <div id="error"></div>
+
+  <div class="app">
+    <header>
+      <div class="brand"><span>◈</span> Forma</div>
+      <div class="header-actions">
+        <button id="panel-toggle" aria-expanded="false">Объекты</button>
+        <button id="quick-add">＋ Куб</button>
+        <button id="save">Сохранить</button>
+      </div>
+      <div class="status">3D Studio</div>
+    </header>
+
+    <main>
+      <div class="tools">
+        <button class="tool active" data-mode="translate" title="Перемещение">↔</button>
+        <button class="tool" data-mode="rotate" title="Вращение">⟳</button>
+        <button class="tool" data-mode="scale" title="Масштаб">⤢</button>
+      </div>
+
+      <section class="workspace">
+        <div id="viewport"></div>
+        <div class="label">3D-сцена</div>
+        <div class="hint">Пальцами: вращение и масштаб · G/R/S: инструменты</div>
+      </section>
+
+      <aside id="side-panel">
+        <section class="panel">
+          <h2>Добавить фигуру</h2>
+          <div class="add-grid">
+            <button data-add="Куб">＋ Куб</button>
+            <button data-add="Параллелепипед">＋ Параллелепипед</button>
+            <button data-add="Сфера">＋ Сфера</button>
+            <button data-add="Цилиндр">＋ Цилиндр</button>
+            <button data-add="Конус">＋ Конус</button>
+          </div>
+        </section>
+        <section class="panel">
+          <h2>Объекты</h2>
+          <div id="object-list"></div>
+        </section>
+        <section class="panel">
+          <h2>Размер и цвет</h2>
+          <div id="properties" class="empty">Выбери объект.</div>
+        </section>
+      </aside>
+    </main>
+  </div>
+
+  <script type="module">
+    try {
+      const THREE = await import("three");
+      const { OrbitControls } = await import("three/addons/controls/OrbitControls.js");
+      const { TransformControls } = await import("three/addons/controls/TransformControls.js");
+
+      const mount = document.querySelector("#viewport");
+      const scene = new THREE.Scene();
+      scene.background = new THREE.Color("#292c35");
+
+      const camera = new THREE.PerspectiveCamera(50, 1, 0.1, 1000);
+      camera.position.set(6, 5, 8);
+
+      const renderer = new THREE.WebGLRenderer({ antialias: true });
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+      renderer.shadowMap.enabled = true;
+      mount.appendChild(renderer.domElement);
+
+      const orbit = new OrbitControls(camera, renderer.domElement);
+      orbit.enableDamping = true;
+      orbit.target.set(0, 0.8, 0);
+
+      const transform = new TransformControls(camera, renderer.domElement);
+      scene.add(transform.getHelper());
+      transform.addEventListener("dragging-changed", e => {
+        orbit.enabled = !e.value;
+      });
+
+      scene.add(new THREE.HemisphereLight(0xdde3ff, 0x38313d, 2));
+      const light = new THREE.DirectionalLight(0xffffff, 3);
+      light.position.set(5, 9, 6);
+      light.castShadow = true;
+      scene.add(light);
+      scene.add(new THREE.GridHelper(40, 40, 0x747080, 0x484b57));
+
+      const objects = [];
+      let selected = null;
+      let count = 0;
+
+      function geometry(type) {
+        switch (type) {
+          case "Сфера": return new THREE.SphereGeometry(0.8, 32, 24);
+          case "Цилиндр": return new THREE.CylinderGeometry(0.7, 0.7, 1.6, 32);
+          case "Конус": return new THREE.ConeGeometry(0.8, 1.6, 32);
+          case "Параллелепипед": return new THREE.BoxGeometry(2, 1.2, 0.8);
+          default: return new THREE.BoxGeometry(1.5, 1.5, 1.5);
+        }
+      }
+
+      function addObject(type) {
+        const colors = {
+          "Куб": "#9884ff",
+          "Параллелепипед": "#5ed9ed",
+          "Сфера": "#8e78f4",
+          "Цилиндр": "#ffaa70",
+          "Конус": "#72e0ab"
+        };
+
+        const mesh = new THREE.Mesh(
+          geometry(type),
+          new THREE.MeshStandardMaterial({ color: colors[type] || "#9884ff", roughness: 0.45 })
+        );
+        mesh.name = `${type} ${++count}`;
+        mesh.userData.type = type;
+        mesh.position.set((Math.random() - 0.5) * 2, 0.8, (Math.random() - 0.5) * 2);
+        mesh.castShadow = true;
+        scene.add(mesh);
+        objects.push(mesh);
+        select(mesh);
+        closePanel();
+      }
+
+      function select(mesh) {
+        selected = mesh;
+        transform.attach(mesh);
+        renderList();
+        renderProperties();
+      }
+
+      function renderList() {
+        const list = document.querySelector("#object-list");
+        list.replaceChildren();
+
+        [...objects].reverse().forEach(mesh => {
+          const button = document.createElement("button");
+          button.className = "object-item" + (mesh === selected ? " selected" : "");
+          button.innerHTML = "<span>◆</span>";
+          button.append(document.createTextNode(mesh.name));
+          button.addEventListener("click", () => select(mesh));
+          list.append(button);
+        });
+      }
+
+      function renderProperties() {
+        const box = document.querySelector("#properties");
+        box.replaceChildren();
+
+        if (!selected) {
+          box.className = "empty";
+          box.textContent = "Выбери объект.";
+          return;
+        }
+
+        box.className = "";
+        const color = document.createElement("label");
+        color.className = "field";
+        color.innerHTML = '<span>Цвет</span><input type="color">';
+        const colorInput = color.querySelector("input");
+        colorInput.value = `#${selected.material.color.getHexString()}`;
+        colorInput.addEventListener("input", () => {
+          if (selected) selected.material.color.set(colorInput.value);
+        });
+        box.append(color);
+
+        ["x", "y", "z"].forEach(axis => {
+          const row = document.createElement("label");
+          row.className = "field";
+          row.innerHTML = `<span>Размер ${axis.toUpperCase()}</span><input type="number" min="0.05" max="100" step="0.1">`;
+          const input = row.querySelector("input");
+          input.value = selected.scale[axis].toFixed(2);
+          input.addEventListener("change", () => {
+            if (!selected) return;
+            const value = Number(input.value);
+            if (Number.isFinite(value) && value > 0) {
+              selected.scale[axis] = Math.max(0.05, Math.min(100, value));
+            }
+            input.value = selected.scale[axis].toFixed(2);
+          });
+          box.append(row);
+        });
+      }
+
+      document.querySelectorAll("[data-add]").forEach(button => {
+        button.addEventListener("click", () => addObject(button.dataset.add));
+      });
+
+      document.querySelectorAll(".tool").forEach(button => {
+        button.addEventListener("click", () => {
+          transform.setMode(button.dataset.mode);
+          document.querySelectorAll(".tool").forEach(item => item.classList.remove("active"));
+          button.classList.add("active");
+        });
+      });
+
+      const raycaster = new THREE.Raycaster();
+      const pointer = new THREE.Vector2();
+
+      renderer.domElement.addEventListener("pointerdown", event => {
+        if (event.button !== 0 || transform.dragging) return;
+
+        const rect = renderer.domElement.getBoundingClientRect();
+        pointer.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+        pointer.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+        raycaster.setFromCamera(pointer, camera);
+
+        const hit = raycaster.intersectObjects(objects)[0];
+        if (hit) {
+          select(hit.object);
+        } else {
+          selected = null;
+          transform.detach();
+          renderList();
+          renderProperties();
+        }
+      });
+
+      document.querySelector("#quick-add").addEventListener("click", () => {
+        if (window.matchMedia("(max-width: 760px)").matches) {
+          openPanel();
+        } else {
+          addObject("Куб");
+        }
+      });
+
+      document.querySelector("#save").addEventListener("click", () => {
+        const data = objects.map(mesh => ({
+          name: mesh.name,
+          type: mesh.userData.type,
+          position: mesh.position.toArray(),
+          rotation: mesh.rotation.toArray(),
+          scale: mesh.scale.toArray(),
+          color: `#${mesh.material.color.getHexString()}`
+        }));
+
+        const url = URL.createObjectURL(new Blob([JSON.stringify(data, null, 2)], {
+          type: "application/json"
+        }));
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = "forma-scene.json";
+        link.click();
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
+      });
+
+      const panel = document.querySelector("#side-panel");
+      const toggle = document.querySelector("#panel-toggle");
+
+      function openPanel() {
+        panel.classList.add("open");
+        toggle.setAttribute("aria-expanded", "true");
+      }
+
+      function closePanel() {
+        panel.classList.remove("open");
+        toggle.setAttribute("aria-expanded", "false");
+      }
+
+      toggle.addEventListener("click", () => {
+        panel.classList.contains("open") ? closePanel() : openPanel();
+      });
+
+      window.addEventListener("keydown", event => {
+        if (event.target instanceof HTMLInputElement) return;
+
+        const modes = { g: "translate", r: "rotate", s: "scale" };
+        if (modes[event.key.toLowerCase()]) transform.setMode(modes[event.key.toLowerCase()]);
+
+        if ((event.key === "Delete" || event.key === "Backspace") && selected) {
+          scene.remove(selected);
+          selected.geometry.dispose();
+          selected.material.dispose();
+          objects.splice(objects.indexOf(selected), 1);
+          selected = null;
+          transform.detach();
+          renderList();
+          renderProperties();
+        }
+
+        if (event.key === "Escape") closePanel();
+      });
+
+      function resize() {
+        const width = mount.clientWidth;
+        const height = mount.clientHeight;
+        if (!width || !height) return;
+        camera.aspect = width / height;
+        camera.updateProjectionMatrix();
+        renderer.setSize(width, height);
+      }
+
+      new ResizeObserver(resize).observe(mount);
+      window.addEventListener("orientationchange", resize);
+      resize();
+
+      function animate() {
+        requestAnimationFrame(animate);
+        orbit.update();
+        renderer.render(scene, camera);
+      }
+
+      animate();
+      addObject("Куб");
+    } catch (error) {
+      const box = document.querySelector("#error");
+      box.style.display = "block";
+      box.textContent =
+        "Не удалось запустить 3D-редактор. Проверь интернет-соединение и открой сайт через веб-сервер.\n\n" +
+        (error?.message || error);
+      console.error(error);
+    }
+  </script>
+</body>
+</html>
