@@ -28,6 +28,9 @@
       touch-action: manipulation;
     }
     button:hover, button.active { background: #7058e8; border-color: #9c88ff; }
+    button:disabled { opacity: 0.45; cursor: not-allowed; }
+    #delete { background: #512b35; border-color: #82404e; }
+    #delete:hover:not(:disabled) { background: #a63f54; border-color: #ff7b89; }
 
     .app { display: grid; grid-template-rows: 54px 1fr; height: 100%; }
     header {
@@ -171,7 +174,7 @@
       header { padding: 0 7px; gap: 5px; }
       .brand { font-size: 13px; }
       .header-actions { gap: 5px; }
-      .header-actions button { padding: 8px; font-size: 12px; }
+      .header-actions button { padding: 8px 6px; font-size: 11px; }
       #save { display: none; }
     }
   </style>
@@ -194,6 +197,7 @@
       <div class="header-actions">
         <button id="panel-toggle" aria-expanded="false">Объекты</button>
         <button id="quick-add">＋ Куб</button>
+        <button id="delete" type="button" disabled>Удалить</button>
         <button id="save">Сохранить</button>
       </div>
       <div class="status">3D Studio</div>
@@ -242,6 +246,7 @@
       const { TransformControls } = await import("three/addons/controls/TransformControls.js");
 
       const mount = document.querySelector("#viewport");
+      const deleteButton = document.querySelector("#delete");
       const scene = new THREE.Scene();
       scene.background = new THREE.Color("#292c35");
 
@@ -310,9 +315,31 @@
       function select(mesh) {
         selected = mesh;
         transform.attach(mesh);
+        deleteButton.disabled = !mesh;
         renderList();
         renderProperties();
       }
+
+      function deleteSelected() {
+        if (!selected) return;
+
+        const objectToDelete = selected;
+        transform.detach();
+        scene.remove(objectToDelete);
+        objectToDelete.geometry.dispose();
+        if (Array.isArray(objectToDelete.material)) {
+          objectToDelete.material.forEach(material => material.dispose());
+        } else {
+          objectToDelete.material.dispose();
+        }
+        objects.splice(objects.indexOf(objectToDelete), 1);
+        selected = null;
+        deleteButton.disabled = true;
+        renderList();
+        renderProperties();
+      }
+
+      deleteButton.addEventListener("click", deleteSelected);
 
       function renderList() {
         const list = document.querySelector("#object-list");
@@ -396,6 +423,7 @@
         } else {
           selected = null;
           transform.detach();
+          deleteButton.disabled = true;
           renderList();
           renderProperties();
         }
@@ -453,14 +481,8 @@
         if (modes[event.key.toLowerCase()]) transform.setMode(modes[event.key.toLowerCase()]);
 
         if ((event.key === "Delete" || event.key === "Backspace") && selected) {
-          scene.remove(selected);
-          selected.geometry.dispose();
-          selected.material.dispose();
-          objects.splice(objects.indexOf(selected), 1);
-          selected = null;
-          transform.detach();
-          renderList();
-          renderProperties();
+          event.preventDefault();
+          deleteSelected();
         }
 
         if (event.key === "Escape") closePanel();
